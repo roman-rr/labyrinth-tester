@@ -4,6 +4,7 @@ export default async function main(node, start) {
     let currentX = start.x;
     let currentY = start.y;
     let steps = [];
+    let stepsDirections = [];
 
     let doStep = async(direction) => {
         if (direction === 'right') {
@@ -27,6 +28,7 @@ export default async function main(node, start) {
         } 
 
         steps.push(`${currentX},${currentY}`);
+        stepsDirections.push(direction);
     }
 
     const canGoDirecation = (dir, state) => {
@@ -62,42 +64,72 @@ export default async function main(node, start) {
 
     await doStep('right');
 
+    let backStepsDirections = [];
     while (!isFinished) {
         state = await node.state(currentX, currentY);
+        isFinished = state.finish;
 
-        console.log('ways to go', waysToGo(state));
         if (waysToGo(state)) {
+            backStepsDirections = []; // clear
 
             if (canGoDirecation('bottom', state)) {
-                console.log('go forward bottom');
                 await doStep('bottom');
                 continue;
             }
 
             if (canGoDirecation('right', state)) {
-                console.log('go forward right');
                 await doStep('right');
                 continue;
             }
 
             if (canGoDirecation('left', state)) {
-                console.log('go forward left');
                 await doStep('left');
                 continue;
             }
 
             if (canGoDirecation('top', state)) {
-                console.log('go forward top');
                 await doStep('top');
                 continue;
             }
         }
 
         if (!waysToGo(state)) {
-            console.log('go back');
+            if (!backStepsDirections.length) {
+                backStepsDirections = stepsDirections;
+            }
+
+            let where = backStepsDirections[backStepsDirections.length - 1];
+            switch(where) {
+                case 'left': where = 'right'; break;
+                case 'right': where = 'left'; break;
+                case 'top': where = 'bottom'; break;
+                case 'bottom': where = 'top'; break;
+            }
+
+            if (where === 'left' && state.left) {
+                await node.left(currentX, currentY);
+                currentX -= 1;
+            }
+
+            if (where === 'right' && state.right) {
+                await node.right(currentX, currentY);
+                currentX += 1;
+            }
+
+            if (where === 'bottom' && state.bottom) {
+                await node.down(currentX, currentY);
+                currentY += 1;
+            }
+
+            if (where === 'top' && state.top) {
+                await node.up(currentX, currentY);
+                currentY -= 1;
+            }
+
+            backStepsDirections = backStepsDirections.slice(0, -1);
+            continue;
         }        
 
-        console.log('steps', steps);
         break;
     }
     
